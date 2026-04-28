@@ -11,6 +11,7 @@
 | 5 | DML Avançado — MERGE / Upsert | `05-dml-merge.sql` | ⏳ |
 | 6 | Custo e Otimização de Queries | `06-custo-otimizacao.sql` | ⏳ |
 | 7 | Scheduled Queries e Automação | `07-scheduled-query.sql` | ⏳ |
+| 8 | Joins Avançados e Otimização | `08-joins-otimizacao.sql` | ⏳ |
 
 ---
 
@@ -101,6 +102,29 @@ WHEN NOT MATCHED THEN INSERT ROW
 2. Defina a frequência (ex: diária às 06:00)
 3. Use `@run_date` como parâmetro da data de execução
 4. Grave sempre em tabela particionada para facilitar reprocessamento
+
+---
+
+## Exercício 8 — Joins Avançados e Otimização
+
+### Broadcast Join vs Shuffle Join
+| Tipo | Quando ocorre | Custo |
+|------|--------------|-------|
+| Broadcast | Tabela direita pequena (~100MB) | Baixo — sem shuffle |
+| Shuffle | Ambas as tabelas grandes | Alto — move dados entre workers |
+
+> Regra: coloque sempre a tabela **menor à direita** do JOIN.
+
+### EXISTS vs JOIN vs NOT IN
+| Abordagem | Usar quando | Cuidado |
+|-----------|------------|---------|
+| `EXISTS` | Só precisa confirmar existência | Mais eficiente que JOIN para isso |
+| `NOT EXISTS` | Anti-join (registros sem match) | Seguro com NULLs |
+| `NOT IN` | Evitar | Retorna vazio silenciosamente se houver NULL na subquery |
+| `JOIN` | Precisa de colunas de ambas as tabelas | Pode duplicar linhas |
+
+### Skew de dados
+> Ocorre quando uma chave de join concentra muito mais linhas que outras. Um worker fica sobrecarregado e o job fica lento. Identifique com `COUNT(*) GROUP BY chave` e filtre chaves com >30% do volume.
 
 ---
 
