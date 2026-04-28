@@ -1,0 +1,42 @@
+-- EXERCÍCIO 1: Particionamento e Clustering no BigQuery
+-- Objetivo: entender o impacto de otimização em custo e performance
+
+-- PASSO 1: Crie o dataset 'engenharia_bigquery' no seu projeto GCP antes de rodar
+
+-- -------------------------------------------------------
+-- PASSO 2: Crie a tabela otimizada a partir de dados públicos
+-- -------------------------------------------------------
+CREATE TABLE engenharia_bigquery.taxi_trips_otimizada
+PARTITION BY DATE(trip_start_timestamp)
+CLUSTER BY pickup_community_area, payment_type
+AS
+SELECT *
+FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+WHERE trip_start_timestamp >= '2023-01-01';
+
+
+-- -------------------------------------------------------
+-- PASSO 3: Compare o custo das queries (veja os bytes estimados antes de rodar)
+-- -------------------------------------------------------
+
+-- SEM otimização — escaneia a tabela inteira
+SELECT
+  COUNT(*) AS total_corridas,
+  ROUND(SUM(fare), 2) AS total_faturamento
+FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+WHERE DATE(trip_start_timestamp) = '2023-06-01';
+
+
+-- COM otimização — escaneia apenas a partição do dia
+SELECT
+  COUNT(*) AS total_corridas,
+  ROUND(SUM(fare), 2) AS total_faturamento
+FROM `engenharia_bigquery.taxi_trips_otimizada`
+WHERE DATE(trip_start_timestamp) = '2023-06-01';
+
+
+-- -------------------------------------------------------
+-- PASSO 4: Analise o plano de execução
+-- -------------------------------------------------------
+-- No console do BigQuery, clique em "Execution details" após rodar a query
+-- Observe: slot time, bytes processados, estágios do job
