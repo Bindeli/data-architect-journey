@@ -1,24 +1,25 @@
 -- EXERCÍCIO 5: DML Avançado — MERGE, INSERT, UPDATE, DELETE
 -- Objetivo: dominar operações de escrita no BigQuery (essencial para pipelines ELT)
+-- Dataset: bigquery-public-data.thelook_ecommerce
 
 -- -------------------------------------------------------
--- Criação da tabela de destino (staging e destino)
+-- Criação das tabelas de destino e staging
 -- -------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS engenharia_bigquery.taxi_trips_destino
-PARTITION BY DATE(trip_start_timestamp)
-CLUSTER BY payment_type
+CREATE TABLE IF NOT EXISTS engenharia_bigquery.pedidos_destino
+PARTITION BY DATE(created_at)
+CLUSTER BY status, gender
 AS
 SELECT *
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+FROM `bigquery-public-data.thelook_ecommerce.orders`
 WHERE FALSE;  -- cria estrutura vazia
 
 
-CREATE TABLE IF NOT EXISTS engenharia_bigquery.taxi_trips_staging
+CREATE TABLE IF NOT EXISTS engenharia_bigquery.pedidos_staging
 AS
 SELECT *
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-WHERE DATE(trip_start_timestamp) = '2023-06-01'
+FROM `bigquery-public-data.thelook_ecommerce.orders`
+WHERE DATE(created_at) = '2023-06-01'
 LIMIT 1000;
 
 
@@ -27,15 +28,14 @@ LIMIT 1000;
 -- Padrão fundamental em pipelines ELT/CDC
 -- -------------------------------------------------------
 
-MERGE engenharia_bigquery.taxi_trips_destino AS destino
-USING engenharia_bigquery.taxi_trips_staging AS origem
-ON destino.trip_id = origem.trip_id
+MERGE engenharia_bigquery.pedidos_destino AS destino
+USING engenharia_bigquery.pedidos_staging AS origem
+ON destino.order_id = origem.order_id
 
 WHEN MATCHED THEN
   UPDATE SET
-    fare            = origem.fare,
-    payment_type    = origem.payment_type,
-    tips            = origem.tips
+    status      = origem.status,
+    num_of_item = origem.num_of_item
 
 WHEN NOT MATCHED THEN
   INSERT ROW;
@@ -45,19 +45,18 @@ WHEN NOT MATCHED THEN
 -- DELETE condicional
 -- -------------------------------------------------------
 
-DELETE FROM engenharia_bigquery.taxi_trips_destino
-WHERE fare IS NULL OR fare <= 0;
+DELETE FROM engenharia_bigquery.pedidos_destino
+WHERE status = 'Cancelled';
 
 
 -- -------------------------------------------------------
 -- INSERT seletivo
 -- -------------------------------------------------------
 
-INSERT INTO engenharia_bigquery.taxi_trips_destino
+INSERT INTO engenharia_bigquery.pedidos_destino
 SELECT *
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-WHERE DATE(trip_start_timestamp) = '2023-06-02'
-  AND fare > 0
+FROM `bigquery-public-data.thelook_ecommerce.orders`
+WHERE DATE(created_at) = '2023-06-02'
 LIMIT 500;
 
 
@@ -66,9 +65,10 @@ LIMIT 500;
 -- -------------------------------------------------------
 
 SELECT
-  DATE(trip_start_timestamp) AS dia,
-  COUNT(*) AS total,
-  ROUND(SUM(fare), 2) AS faturamento
-FROM engenharia_bigquery.taxi_trips_destino
-GROUP BY 1
-ORDER BY 1;
+  DATE(created_at) AS dia,
+  status,
+  COUNT(*) AS total_pedidos,
+  SUM(num_of_item) AS total_itens
+FROM engenharia_bigquery.pedidos_destino
+GROUP BY 1, 2
+ORDER BY 1, 2;

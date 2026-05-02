@@ -1,25 +1,24 @@
 -- EXERCÍCIO 3: Arrays e Structs no BigQuery
 -- Objetivo: trabalhar com tipos complexos — essencial para dados aninhados (JSON, Avro, Parquet)
+-- Dataset: bigquery-public-data.thelook_ecommerce
 
 -- -------------------------------------------------------
 -- STRUCT — agrupar campos relacionados
 -- -------------------------------------------------------
 
 SELECT
-  trip_id,
+  order_id,
   STRUCT(
-    pickup_latitude  AS lat,
-    pickup_longitude AS lng,
-    pickup_community_area AS area
-  ) AS origem,
+    user_id AS id,
+    gender  AS genero,
+    age     AS idade
+  ) AS cliente,
   STRUCT(
-    dropoff_latitude  AS lat,
-    dropoff_longitude AS lng,
-    dropoff_community_area AS area
-  ) AS destino,
-  fare
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-WHERE pickup_latitude IS NOT NULL
+    status     AS status,
+    num_of_item AS qtd_itens,
+    created_at  AS criado_em
+  ) AS pedido
+FROM `bigquery-public-data.thelook_ecommerce.orders`
 LIMIT 10;
 
 
@@ -27,15 +26,15 @@ LIMIT 10;
 -- ARRAY_AGG — agregar valores em array
 -- -------------------------------------------------------
 
--- Todos os tipos de pagamento usados por cada motorista
+-- Todos os status de pedido de cada usuário
 SELECT
-  taxi_id,
-  ARRAY_AGG(DISTINCT payment_type IGNORE NULLS ORDER BY payment_type) AS formas_pagamento,
-  COUNT(*) AS total_corridas
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-WHERE taxi_id IS NOT NULL
-GROUP BY taxi_id
-ORDER BY total_corridas DESC
+  user_id,
+  ARRAY_AGG(DISTINCT status IGNORE NULLS ORDER BY status) AS status_utilizados,
+  COUNT(*) AS total_pedidos
+FROM `bigquery-public-data.thelook_ecommerce.orders`
+WHERE user_id IS NOT NULL
+GROUP BY user_id
+ORDER BY total_pedidos DESC
 LIMIT 20;
 
 
@@ -43,32 +42,32 @@ LIMIT 20;
 -- UNNEST — explodir array em linhas
 -- -------------------------------------------------------
 
-WITH motoristas AS (
+WITH usuarios AS (
   SELECT
-    taxi_id,
-    ARRAY_AGG(DISTINCT payment_type IGNORE NULLS) AS formas_pagamento
-  FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-  WHERE taxi_id IS NOT NULL
-  GROUP BY taxi_id
+    user_id,
+    ARRAY_AGG(DISTINCT status IGNORE NULLS) AS status_utilizados
+  FROM `bigquery-public-data.thelook_ecommerce.orders`
+  WHERE user_id IS NOT NULL
+  GROUP BY user_id
   LIMIT 5
 )
 SELECT
-  taxi_id,
-  forma
-FROM motoristas,
-UNNEST(formas_pagamento) AS forma;
+  user_id,
+  status
+FROM usuarios,
+UNNEST(status_utilizados) AS status;
 
 
 -- -------------------------------------------------------
 -- JSON_EXTRACT — trabalhar com colunas JSON (string)
 -- -------------------------------------------------------
 
--- Simulando uma coluna JSON
-WITH dados_json AS (
-  SELECT '{"motorista": "ABC123", "avaliacao": 4.8, "tags": ["rapido", "educado"]}' AS payload
+-- Simulando uma coluna JSON (padrão comum em eventos de Pub/Sub)
+WITH eventos AS (
+  SELECT '{"user_id": 42, "acao": "compra", "tags": ["novo", "promocao"]}' AS payload
 )
 SELECT
-  JSON_EXTRACT_SCALAR(payload, '$.motorista') AS motorista,
-  CAST(JSON_EXTRACT_SCALAR(payload, '$.avaliacao') AS FLOAT64) AS avaliacao,
-  JSON_EXTRACT_ARRAY(payload, '$.tags') AS tags
-FROM dados_json;
+  JSON_EXTRACT_SCALAR(payload, '$.user_id')  AS user_id,
+  JSON_EXTRACT_SCALAR(payload, '$.acao')     AS acao,
+  JSON_EXTRACT_ARRAY(payload, '$.tags')      AS tags
+FROM eventos;

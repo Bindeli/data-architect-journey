@@ -1,22 +1,22 @@
 -- EXERCÍCIO 2: Window Functions no BigQuery
 -- Objetivo: dominar funções analíticas para análises avançadas sem GROUP BY
+-- Dataset: bigquery-public-data.thelook_ecommerce
 
 -- -------------------------------------------------------
 -- RANK, DENSE_RANK, ROW_NUMBER
 -- -------------------------------------------------------
 
--- Top 3 motoristas com maior faturamento por mês
+-- Top 3 usuários com mais pedidos por mês
 SELECT
-  DATE_TRUNC(trip_start_timestamp, MONTH) AS mes,
-  taxi_id,
-  ROUND(SUM(fare), 2) AS total_faturamento,
+  DATE_TRUNC(created_at, MONTH) AS mes,
+  user_id,
+  COUNT(*) AS total_pedidos,
   RANK() OVER (
-    PARTITION BY DATE_TRUNC(trip_start_timestamp, MONTH)
-    ORDER BY SUM(fare) DESC
+    PARTITION BY DATE_TRUNC(created_at, MONTH)
+    ORDER BY COUNT(*) DESC
   ) AS ranking
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-WHERE trip_start_timestamp >= '2023-01-01'
-  AND fare IS NOT NULL
+FROM `bigquery-public-data.thelook_ecommerce.orders`
+WHERE created_at >= '2023-01-01'
 GROUP BY 1, 2
 QUALIFY ranking <= 3;
 
@@ -25,24 +25,24 @@ QUALIFY ranking <= 3;
 -- LAG / LEAD — comparar com período anterior
 -- -------------------------------------------------------
 
--- Variação de faturamento diário em relação ao dia anterior
-WITH faturamento_diario AS (
+-- Variação de pedidos diários em relação ao dia anterior
+WITH pedidos_diarios AS (
   SELECT
-    DATE(trip_start_timestamp) AS dia,
-    ROUND(SUM(fare), 2) AS total
-  FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-  WHERE trip_start_timestamp BETWEEN '2023-01-01' AND '2023-03-31'
+    DATE(created_at) AS dia,
+    COUNT(*) AS total
+  FROM `bigquery-public-data.thelook_ecommerce.orders`
+  WHERE created_at BETWEEN '2023-01-01' AND '2023-03-31'
   GROUP BY 1
 )
 SELECT
   dia,
   total,
   LAG(total) OVER (ORDER BY dia) AS total_dia_anterior,
-  ROUND(total - LAG(total) OVER (ORDER BY dia), 2) AS variacao,
+  total - LAG(total) OVER (ORDER BY dia) AS variacao,
   ROUND(
     SAFE_DIVIDE(total - LAG(total) OVER (ORDER BY dia), LAG(total) OVER (ORDER BY dia)) * 100, 2
   ) AS variacao_pct
-FROM faturamento_diario
+FROM pedidos_diarios
 ORDER BY dia;
 
 
@@ -50,19 +50,19 @@ ORDER BY dia;
 -- RUNNING TOTAL — acumulado
 -- -------------------------------------------------------
 
-WITH faturamento_diario AS (
+WITH pedidos_diarios AS (
   SELECT
-    DATE(trip_start_timestamp) AS dia,
-    ROUND(SUM(fare), 2) AS total
-  FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-  WHERE trip_start_timestamp BETWEEN '2023-01-01' AND '2023-01-31'
+    DATE(created_at) AS dia,
+    COUNT(*) AS total
+  FROM `bigquery-public-data.thelook_ecommerce.orders`
+  WHERE created_at BETWEEN '2023-01-01' AND '2023-01-31'
   GROUP BY 1
 )
 SELECT
   dia,
   total,
-  ROUND(SUM(total) OVER (ORDER BY dia ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), 2) AS acumulado
-FROM faturamento_diario
+  SUM(total) OVER (ORDER BY dia ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS acumulado
+FROM pedidos_diarios
 ORDER BY dia;
 
 
@@ -71,10 +71,10 @@ ORDER BY dia;
 -- -------------------------------------------------------
 
 SELECT
-  payment_type,
-  ROUND(AVG(fare), 2) AS media,
-  ROUND(PERCENTILE_CONT(fare, 0.5) OVER (PARTITION BY payment_type), 2) AS mediana,
-  ROUND(PERCENTILE_CONT(fare, 0.95) OVER (PARTITION BY payment_type), 2) AS p95
-FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-WHERE fare IS NOT NULL AND fare > 0
+  status,
+  COUNT(*) AS total,
+  ROUND(PERCENTILE_CONT(num_of_item, 0.5) OVER (PARTITION BY status), 2) AS mediana_itens,
+  ROUND(PERCENTILE_CONT(num_of_item, 0.95) OVER (PARTITION BY status), 2) AS p95_itens
+FROM `bigquery-public-data.thelook_ecommerce.orders`
+WHERE num_of_item IS NOT NULL
 LIMIT 1000;
