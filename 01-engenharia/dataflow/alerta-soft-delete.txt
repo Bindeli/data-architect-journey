@@ -1,0 +1,13 @@
+ALERTA GCP — Soft Delete no bucket do Dataflow
+
+Os jobs do Dataflow usam o Cloud Storage para armazenar arquivos temporários durante a execução
+do pipeline. Esses arquivos têm a política de exclusão reversível (soft delete) ativada por padrão.
+
+Para evitar cobranças desnecessárias de armazenamento, desative o soft delete nos buckets
+usados pelo Dataflow para armazenamento temporário (staging e temp).
+
+Como desativar via gcloud:
+  gcloud storage buckets update gs://SEU_BUCKET --no-enable-soft-delete
+
+Como desativar via console GCP:
+  Cloud Storage > Buckets > SEU_BUCKET > Proteção > Desativar exclusão reversível
