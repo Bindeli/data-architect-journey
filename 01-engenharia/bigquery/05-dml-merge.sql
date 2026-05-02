@@ -6,7 +6,7 @@
 -- Criação das tabelas de destino e staging
 -- -------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS engenharia_bigquery.pedidos_destino
+CREATE TABLE IF NOT EXISTS engenharia_bigquery_us.pedidos_destino
 PARTITION BY DATE(created_at)
 CLUSTER BY status, gender
 AS
@@ -15,7 +15,7 @@ FROM `bigquery-public-data.thelook_ecommerce.orders`
 WHERE FALSE;  -- cria estrutura vazia
 
 
-CREATE TABLE IF NOT EXISTS engenharia_bigquery.pedidos_staging
+CREATE TABLE IF NOT EXISTS engenharia_bigquery_us.pedidos_staging
 AS
 SELECT *
 FROM `bigquery-public-data.thelook_ecommerce.orders`
@@ -28,8 +28,8 @@ LIMIT 1000;
 -- Padrão fundamental em pipelines ELT/CDC
 -- -------------------------------------------------------
 
-MERGE engenharia_bigquery.pedidos_destino AS destino
-USING engenharia_bigquery.pedidos_staging AS origem
+MERGE engenharia_bigquery_us.pedidos_destino AS destino
+USING engenharia_bigquery_us.pedidos_staging AS origem
 ON destino.order_id = origem.order_id
 
 WHEN MATCHED THEN
@@ -45,7 +45,7 @@ WHEN NOT MATCHED THEN
 -- DELETE condicional
 -- -------------------------------------------------------
 
-DELETE FROM engenharia_bigquery.pedidos_destino
+DELETE FROM engenharia_bigquery_us.pedidos_destino
 WHERE status = 'Cancelled';
 
 
@@ -53,7 +53,7 @@ WHERE status = 'Cancelled';
 -- INSERT seletivo
 -- -------------------------------------------------------
 
-INSERT INTO engenharia_bigquery.pedidos_destino
+INSERT INTO engenharia_bigquery_us.pedidos_destino
 SELECT *
 FROM `bigquery-public-data.thelook_ecommerce.orders`
 WHERE DATE(created_at) = '2023-06-02'
@@ -69,6 +69,6 @@ SELECT
   status,
   COUNT(*) AS total_pedidos,
   SUM(num_of_item) AS total_itens
-FROM engenharia_bigquery.pedidos_destino
+FROM engenharia_bigquery_us.pedidos_destino
 GROUP BY 1, 2
 ORDER BY 1, 2;

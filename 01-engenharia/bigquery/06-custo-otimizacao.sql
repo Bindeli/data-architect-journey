@@ -13,7 +13,7 @@ SELECT
   row_count,
   creation_time,
   last_modified_time
-FROM `engenharia_bigquery.__TABLES__`
+FROM `engenharia_bigquery_us.__TABLES__`
 ORDER BY size_bytes DESC;
 
 
@@ -23,7 +23,7 @@ SELECT
   total_rows,
   total_logical_bytes,
   last_modified_time
-FROM `engenharia_bigquery.INFORMATION_SCHEMA.PARTITIONS`
+FROM `engenharia_bigquery_us.INFORMATION_SCHEMA.PARTITIONS`
 WHERE table_name = 'pedidos_otimizados'
 ORDER BY partition_id DESC
 LIMIT 20;
@@ -61,12 +61,12 @@ WHERE DATE(created_at) = '2023-06-01';
 
 -- RUIM: filtro que não usa partição (função sobre a coluna impede pruning)
 SELECT COUNT(*), SUM(num_of_item)
-FROM `engenharia_bigquery.pedidos_otimizados`
+FROM `engenharia_bigquery_us.pedidos_otimizados`
 WHERE EXTRACT(YEAR FROM created_at) = 2023;
 
 -- BOM: filtro que usa a partição diretamente
 SELECT COUNT(*), SUM(num_of_item)
-FROM `engenharia_bigquery.pedidos_otimizados`
+FROM `engenharia_bigquery_us.pedidos_otimizados`
 WHERE created_at BETWEEN '2023-01-01' AND '2023-12-31';
 
 

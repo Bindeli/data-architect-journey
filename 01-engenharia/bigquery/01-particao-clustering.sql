@@ -2,12 +2,12 @@
 -- Objetivo: entender o impacto de otimização em custo e performance
 -- Dataset: bigquery-public-data.thelook_ecommerce (criado pelo Google, acesso garantido)
 
--- PASSO 1: Crie o dataset 'engenharia_bigquery' no seu projeto GCP antes de rodar
+-- PASSO 1: Crie o dataset 'engenharia_bigquery_us' na região US (multi-region) no GCP
 
 -- -------------------------------------------------------
 -- PASSO 2: Crie a tabela otimizada a partir de dados públicos
 -- -------------------------------------------------------
-CREATE TABLE engenharia_bigquery.pedidos_otimizados
+CREATE TABLE engenharia_bigquery_us.pedidos_otimizados
 PARTITION BY DATE(created_at)
 CLUSTER BY status, gender
 AS
@@ -32,7 +32,7 @@ WHERE DATE(created_at) = '2023-06-01';
 SELECT
   COUNT(*) AS total_pedidos,
   ROUND(SUM(num_of_item), 2) AS total_itens
-FROM `engenharia_bigquery.pedidos_otimizados`
+FROM `engenharia_bigquery_us.pedidos_otimizados`
 WHERE DATE(created_at) = '2023-06-01';
 
 

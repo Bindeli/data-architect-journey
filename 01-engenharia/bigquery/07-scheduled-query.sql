@@ -6,7 +6,7 @@
 -- Criar a tabela de destino do snapshot
 -- -------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS engenharia_bigquery.pedidos_snapshot (
+CREATE TABLE IF NOT EXISTS engenharia_bigquery_us.pedidos_snapshot (
   data_carga     DATE,
   dia            DATE,
   status         STRING,
@@ -24,7 +24,7 @@ PARTITION BY data_carga;
 -- Parâmetro automático disponível: @run_date (data da execução)
 -- -------------------------------------------------------
 
-INSERT INTO `engenharia_bigquery.pedidos_snapshot`
+INSERT INTO `engenharia_bigquery_us.pedidos_snapshot`
 SELECT
   @run_date AS data_carga,
   DATE(created_at) AS dia,
@@ -46,6 +46,6 @@ SELECT
   COUNT(DISTINCT dia) AS dias_cobertos,
   SUM(total_pedidos) AS pedidos,
   SUM(total_itens) AS itens
-FROM engenharia_bigquery.pedidos_snapshot
+FROM engenharia_bigquery_us.pedidos_snapshot
 GROUP BY 1
 ORDER BY 1 DESC;

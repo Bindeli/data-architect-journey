@@ -7,7 +7,7 @@
 -- Executa a query toda vez que for chamada
 -- -------------------------------------------------------
 
-CREATE OR REPLACE VIEW engenharia_bigquery.vw_pedidos_diarios AS
+CREATE OR REPLACE VIEW engenharia_bigquery_us.vw_pedidos_diarios AS
 SELECT
   DATE(created_at) AS dia,
   COUNT(*) AS total_pedidos,
@@ -23,7 +23,7 @@ GROUP BY 1;
 -- Custo de armazenamento, mas queries muito mais rápidas e baratas
 -- -------------------------------------------------------
 
-CREATE MATERIALIZED VIEW engenharia_bigquery.mv_pedidos_mensais
+CREATE MATERIALIZED VIEW engenharia_bigquery_us.mv_pedidos_mensais
 OPTIONS (enable_refresh = true, refresh_interval_minutes = 60)
 AS
 SELECT
@@ -50,7 +50,7 @@ ORDER BY 1;
 
 -- Via view materializada (lê resultado pré-computado)
 SELECT mes, SUM(total_pedidos) AS total_pedidos
-FROM engenharia_bigquery.mv_pedidos_mensais
+FROM engenharia_bigquery_us.mv_pedidos_mensais
 GROUP BY 1
 ORDER BY 1;
 
