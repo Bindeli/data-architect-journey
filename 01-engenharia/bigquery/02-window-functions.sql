@@ -7,17 +7,26 @@
 -- -------------------------------------------------------
 
 -- Top 3 usuários com mais pedidos por mês
+-- Separa agregação e window function em CTEs — BigQuery não permite referenciar
+-- colunas não-agregadas diretamente no PARTITION BY após um GROUP BY
+WITH pedidos_por_mes AS (
+  SELECT
+    DATE_TRUNC(created_at, MONTH) AS mes,
+    user_id,
+    COUNT(*) AS total_pedidos
+  FROM `bigquery-public-data.thelook_ecommerce.orders`
+  WHERE created_at >= '2023-01-01'
+  GROUP BY 1, 2
+)
 SELECT
-  DATE_TRUNC(created_at, MONTH) AS mes,
+  mes,
   user_id,
-  COUNT(*) AS total_pedidos,
+  total_pedidos,
   RANK() OVER (
-    PARTITION BY DATE_TRUNC(created_at, MONTH)
-    ORDER BY COUNT(*) DESC
+    PARTITION BY mes
+    ORDER BY total_pedidos DESC
   ) AS ranking
-FROM `bigquery-public-data.thelook_ecommerce.orders`
-WHERE created_at >= '2023-01-01'
-GROUP BY 1, 2
+FROM pedidos_por_mes
 QUALIFY ranking <= 3;
 
 
