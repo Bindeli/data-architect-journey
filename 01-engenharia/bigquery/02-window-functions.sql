@@ -119,11 +119,20 @@ ORDER BY dia;
 --   a mediana ignora esse efeito — por isso é mais confiável para distribuição.
 -- -------------------------------------------------------
 
+-- CTE calcula os percentis por linha, depois agrupamos para pegar o COUNT e os valores únicos
+WITH base AS (
+  SELECT
+    status,
+    ROUND(PERCENTILE_CONT(num_of_item, 0.5) OVER (PARTITION BY status), 2) AS mediana_itens,
+    ROUND(PERCENTILE_CONT(num_of_item, 0.95) OVER (PARTITION BY status), 2) AS p95_itens
+  FROM `bigquery-public-data.thelook_ecommerce.orders`
+  WHERE num_of_item IS NOT NULL
+)
 SELECT
   status,
   COUNT(*) AS total,
-  ROUND(PERCENTILE_CONT(num_of_item, 0.5) OVER (PARTITION BY status), 2) AS mediana_itens,
-  ROUND(PERCENTILE_CONT(num_of_item, 0.95) OVER (PARTITION BY status), 2) AS p95_itens
-FROM `bigquery-public-data.thelook_ecommerce.orders`
-WHERE num_of_item IS NOT NULL
-LIMIT 1000;
+  MAX(mediana_itens) AS mediana_itens,
+  MAX(p95_itens) AS p95_itens
+FROM base
+GROUP BY status
+ORDER BY status;
