@@ -33,15 +33,69 @@
 
 ## Exercício 2 — Window Functions
 
-### Funções principais
-| Função | Para que serve |
-|--------|---------------|
-| `RANK / DENSE_RANK` | Ranking com ou sem empate |
-| `ROW_NUMBER` | Numeração única por linha |
-| `LAG / LEAD` | Acessar linha anterior/próxima |
-| `SUM OVER` | Running total / acumulado |
-| `PERCENTILE_CONT` | Mediana, percentis |
-| `QUALIFY` | Filtrar resultado de window function |
+### RANK()
+Atribui uma posição a cada linha dentro de uma partição. Em caso de empate, pula o próximo número (1, 1, 3).
+```sql
+RANK() OVER (PARTITION BY mes ORDER BY total_pedidos DESC)
+```
+> Use `DENSE_RANK()` se não quiser pular números no empate. Use `QUALIFY ranking <= N` para filtrar o top N sem subquery.
+
+---
+
+### LAG()
+Acessa o valor de uma linha anterior na ordem definida. Útil para calcular variação em relação ao período anterior.
+```sql
+LAG(total) OVER (ORDER BY dia)
+-- retorna o valor de "total" da linha anterior
+-- primeira linha retorna NULL (sem linha anterior)
+```
+> `LEAD()` faz o oposto — acessa a próxima linha. Ambos aceitam um segundo parâmetro de offset: `LAG(total, 7)` = 7 linhas atrás.
+
+---
+
+### SUM() OVER — Running Total
+Calcula um acumulado crescente linha a linha. A cláusula `ROWS BETWEEN` define a janela de linhas incluídas no cálculo.
+```sql
+SUM(total) OVER (ORDER BY dia ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+-- UNBOUNDED PRECEDING = desde o início
+-- CURRENT ROW         = até a linha atual
+```
+> Sem o `ROWS BETWEEN`, o BigQuery usa a janela padrão que pode variar. Sempre declare explicitamente para evitar comportamento inesperado.
+
+---
+
+### PERCENTILE_CONT()
+Calcula percentis contínuos (interpola entre valores). Útil para mediana e análise de distribuição, que a média não representa bem quando há outliers.
+```sql
+PERCENTILE_CONT(num_of_item, 0.5) OVER (PARTITION BY status)
+-- 0.5 = mediana (50% dos valores estão abaixo)
+-- 0.95 = p95 (95% dos valores estão abaixo)
+```
+> Não pode ser misturado com `COUNT(*)` no mesmo SELECT. Use um CTE: calcule o percentil no CTE, depois agrupe com `MAX()` no SELECT final.
+
+---
+
+### QUALIFY
+Filtra o resultado de uma window function sem precisar de subquery. Equivale a um `WHERE` aplicado após o cálculo da window function.
+```sql
+QUALIFY ranking <= 3
+-- equivalente a: SELECT * FROM (...) WHERE ranking <= 3
+```
+> Só funciona no BigQuery e alguns outros dialetos modernos. Não existe no SQL padrão.
+
+---
+
+### Padrão CTE para window functions com agregação
+Quando precisar misturar `COUNT(*)` (que exige `GROUP BY`) com window functions no mesmo resultado:
+```sql
+WITH base AS (
+  SELECT coluna, RANK() OVER (...) AS ranking  -- window function aqui
+  FROM tabela
+)
+SELECT coluna, COUNT(*), MAX(ranking)           -- agregação aqui
+FROM base
+GROUP BY coluna
+```
 
 ### Resultado
 _Escreva aqui o que você observou_
